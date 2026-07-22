@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlackHoleSaver — macOS 黑洞屏保</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #14141f;
+    --text: #c8c8d4;
+    --accent: #e8874b;
+    --accent2: #c96030;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "PingFang SC", "Noto Sans SC", sans-serif;
+    line-height: 1.7;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 80px 24px 48px;
+    background: radial-gradient(ellipse at 50% 30%, #1a1a2e 0%, var(--bg) 70%);
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #e8874b 0%, #f5c542 50%, #e8874b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .subtitle {
+    margin-top: 12px;
+    font-size: 1.15rem;
+    color: #8888a0;
+  }
+  .hero .fork-note {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #666;
+  }
+  .hero .fork-note a { color: #888; }
+  .hero .btn {
+    display: inline-block;
+    margin-top: 32px;
+    padding: 14px 40px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: background .2s;
+  }
+  .hero .btn:hover { background: var(--accent2); }
+  .hero .btn-sub {
+    display: inline-block;
+    margin-top: 16px;
+    margin-left: 12px;
+    padding: 10px 28px;
+    border: 1px solid #444;
+    color: #aaa;
+    font-size: 0.9rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: .2s;
+  }
+  .hero .btn-sub:hover { border-color: #888; color: #ddd; }
+
+  /* Preview */
+  .preview {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+  .preview img {
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 0 80px rgba(232,135,75,.15);
+  }
+
+  /* Section */
+  section {
+    max-width: 780px;
+    margin: 0 auto 60px;
+    padding: 0 24px;
+  }
+  section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    color: #eee;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card h3 { font-size: 1rem; color: var(--accent); margin-bottom: 8px; }
+  .card p  { font-size: .92rem; color: #999; }
+
+  /* Compat table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .92rem;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid #222;
+  }
+  th { color: #888; font-weight: 500; }
+  td code {
+    background: #222;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: .85rem;
+    color: #ccc;
+  }
+
+  /* Steps */
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    padding: 10px 0 10px 40px;
+    position: relative;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 8px;
+    width: 24px; height: 24px;
+    background: var(--accent);
+    color: #fff;
+    font-size: .8rem; font-weight: 600;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .permission-box {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 16px;
+  }
+  .permission-box h4 { color: #ddd; margin-bottom: 8px; }
+
+  footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: #555;
+    font-size: .85rem;
+    border-top: 1px solid #1a1a24;
+  }
+  footer a { color: #777; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>BlackHoleSaver</h1>
+  <p class="subtitle">你的桌面掉进了黑洞——macOS 黑洞引力透镜屏保</p>
+  <p class="fork-note">Fork 自 <a href="https://github.com/s0xDk/blackhole_screensaver_macos">s0xDk/blackhole_screensaver_macos</a></p>
+  <a class="btn" href="https://github.com/Qsker/blackhole_screensaver_macos/releases/latest">⬇ 下载 BlackHoleSaver</a>
+  <br>
+  <a class="btn-sub" href="https://github.com/Qsker/blackhole_screensaver_macos">GitHub 仓库</a>
+</div>
+
+<div class="preview">
+  <img src="preview.jpg" alt="BlackHoleSaver 效果预览">
+</div>
+
+<section>
+  <h2>✨ 效果</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>🕳 黑洞阴影</h3>
+      <p>史瓦西半径内的光线坠入视界，窗口真的被吞噬了</p>
+    </div>
+    <div class="card">
+      <h3>🔍 引力透镜</h3>
+      <p>桌面在爱因斯坦环内弯曲、放大、镜像，实时数值积分</p>
+    </div>
+    <div class="card">
+      <h3>💫 吸积盘</h3>
+      <p>Shakura–Sunyaev 温度分布，相对论多普勒频移与束流增强</p>
+    </div>
+    <div class="card">
+      <h3>🌌 星空</h3>
+      <p>没有录屏权限时显示透镜星空，同样震撼</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>💻 兼容性</h2>
+  <table>
+    <tr><th>macOS 版本</th><th>状态</th><th>录屏权限宿主</th></tr>
+    <tr><td>macOS 27</td><td>✅ 已测试</td><td><code>WallpaperAgent.app</code></td></tr>
+    <tr><td>macOS 15 Sequoia</td><td>✅ 兼容</td><td><code>legacyScreenSaver.appex</code></td></tr>
+    <tr><td>macOS 14 Sonoma</td><td>✅ 最低要求</td><td><code>legacyScreenSaver.appex</code></td></tr>
+  </table>
+  <p style="margin-top:12px; font-size:.85rem; color:#777">需要 Apple Silicon（M 系列芯片）推荐，Intel Mac 也可运行但性能较低。</p>
+</section>
+
+<section>
+  <h2>📥 安装</h2>
+  <ol class="steps">
+    <li>从 <a href="https://github.com/Qsker/blackhole_screensaver_macos/releases/latest" style="color:var(--accent)">Releases</a> 下载 <code>BlackHoleSaver.saver.zip</code> 并解压</li>
+    <li>双击 <code>BlackHoleSaver.saver</code> 安装</li>
+    <li>打开<strong>系统设置 → 屏幕保护程序</strong>，选择 <strong>BlackHoleSaver</strong></li>
+    <li>授予屏幕录制权限（见下方）</li>
+  </ol>
+
+  <div class="permission-box">
+    <h4>🔒 macOS 27 — 录屏权限</h4>
+    <p>系统设置 → 隐私与安全性 → 屏幕与系统音频录制 → 点 + → 前往 <code>/System/Library/CoreServices/</code> → 选 <code>WallpaperAgent.app</code> → 打开开关</p>
+    <h4 style="margin-top:14px">🔒 macOS 14 / 15 — 录屏权限</h4>
+    <p>系统设置 → 隐私与安全性 → 屏幕与系统音频录制 → 从 Finder 把 <code>/System/Library/Frameworks/ScreenSaver.framework/PlugIns/legacyScreenSaver.appex</code> 拖入列表 → 打开开关</p>
+    <p style="margin-top:10px; font-size:.85rem; color:#888">没有权限也能用，黑洞会吞星空而不是桌面。</p>
+  </div>
+</section>
+
+<section>
+  <h2>⚙️ 预设</h2>
+  <table>
+    <tr><th>预设名</th><th>特点</th></tr>
+    <tr><td>🔥 炼狱</td><td>默认，炽热吸积盘 + 强引力透镜</td></tr>
+    <tr><td>🪐 卡冈图雅</td><td>温和色调，类似《星际穿越》风格</td></tr>
+    <tr><td>🍩 M87* 甜甜圈</td><td>低倾角，类似 EHT 拍摄的 M87* 黑洞</td></tr>
+    <tr><td>✨ 类星体</td><td>高温蓝色吸积盘，强烈多普勒束流</td></tr>
+    <tr><td>🔵 耀变体</td><td>极端温度，最强相对论效应</td></tr>
+    <tr><td>🔬 纯透镜</td><td>无吸积盘，纯引力透镜 + 星空</td></tr>
+    <tr><td>🧘 禅意</td><td>低对比度柔和吸积盘，安静优雅</td></tr>
+  </table>
+</section>
+
+<footer>
+  <p>Fork 自 <a href="https://github.com/s0xDk/blackhole_screensaver_macos">s0xDk/blackhole_screensaver_macos</a> · 基于 Eric Bruneton 的黑洞渲染研究</p>
+  <p style="margin-top:4px">macOS 27 适配 · Swift 6 兼容 · 中文界面</p>
+</footer>
+
+</body>
+</html>
