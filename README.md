@@ -1,85 +1,112 @@
-# BlackHoleSaver — a black hole screensaver for macOS
+# BlackHoleSaver — macOS 黑洞屏保
 
-A macOS screensaver that screenshots your desktop the moment it starts, then swallows it: your windows bend, magnify and mirror around a geodesic-traced Schwarzschild black hole with a relativistic accretion disk.
+屏保启动时截取你的桌面，然后把它吞进黑洞——窗口在史瓦西黑洞周围弯曲、放大、镜像，配上相对论吸积盘。
 
-![BlackHoleSaver preview](preview.jpg)
+![BlackHoleSaver 预览](preview.jpg)
 
-After Eric Bruneton's [Real-time High-Quality Rendering of Non-Rotating Black Holes](https://ebruneton.github.io/black_hole_shader/), via the single-pass adaptation from [blackhole_ghostty](https://github.com/s0xDk/blackhole_ghostty). Each pixel's null geodesic is integrated numerically in one Metal fragment pass — everything the camera sees falls out of that integration rather than being painted on:
+基于 Eric Bruneton 的 [Real-time High-Quality Rendering of Non-Rotating Black Holes](https://ebruneton.github.io/black_hole_shader/)，经 [blackhole_ghostty](https://github.com/s0xDk/blackhole_ghostty) 的单 pass 改造。每个像素的零测地线在一个 Metal fragment pass 中数值积分——你看到的一切都来自光线追踪：
 
-- **the shadow** — rays with impact parameter under b₍crit₎ = (3√3/2) rₛ spiral into the horizon (your windows really are gone, not faded)
-- **gravitational lensing** — escaped rays are projected back onto the desktop "sky" plane: the screenshot bends, magnifies, and mirrors inside the Einstein ring
-- **photon ring** — rays winding near the r = 1.5 rₛ photon sphere
-- **accretion disk** — a thin Keplerian disk the ray may cross several times (the far side arcs over and under the shadow); blackbody color from a Shakura–Sunyaev temperature profile, shifted and beamed by the relativistic Doppler factor
-- **starfield** — a lensed sky, shown when the desktop can't be captured
+- **黑洞阴影** —— 碰撞参数小于 b₍crit₎ = (3√3/2) rₛ 的光线螺旋坠入视界（你的窗口真的消失了，不是淡出）
+- **引力透镜** —— 逃逸光线投射回桌面"天空"平面：截图在爱因斯坦环内弯曲、放大、镜像
+- **光子环** —— 缠绕在 r = 1.5 rₛ 光子球附近的光线
+- **吸积盘** —— 光线可多次穿越的薄开普勒盘（远侧弧线在阴影上下方）；Shakura–Sunyaev 温度分布的黑体色，经相对论多普勒因子频移和束流增强
+- **星空** —— 无法截取桌面时显示的透镜星空
 
-## Requirements
+## 系统要求
 
-- macOS 14 (Sonoma) or later
-- Any Mac with Metal (Apple Silicon recommended)
+- macOS 14 (Sonoma) 及以上
+- 支持 Metal 的 Mac（推荐 Apple Silicon）
 
-## Install
+## 安装
 
-1. Download `BlackHoleSaver.saver.zip` from [Releases](https://github.com/s0xDk/blackhole_screensaver_macos/releases) and unzip it.
-2. Double-click `BlackHoleSaver.saver` — it installs to `~/Library/Screen Savers/`.
-3. Select **BlackHoleSaver** in **System Settings → Screen Saver**.
-4. Grant the Screen Recording permission (next section) — without it the saver shows a lensed starfield instead of your desktop.
+1. 从 [Releases](https://github.com/Qsker/blackhole_screensaver_macos/releases) 下载 `BlackHoleSaver.saver.zip` 并解压
+2. 双击 `BlackHoleSaver.saver` —— 自动安装到 `~/Library/Screen Savers/`
+3. 在 **系统设置 → 屏幕保护程序** 中选择 **BlackHoleSaver**
+4. 授予屏幕录制权限（见下节）—— 没有权限的话黑洞吞的是星空而非桌面
 
-Releases are Developer ID signed and notarized. If macOS refuses to open a copy that traveled through some other channel, clear the quarantine flag: `xattr -dr com.apple.quarantine BlackHoleSaver.saver`.
+如果 macOS 拒绝打开通过其他渠道获取的副本，清除隔离标记：
 
-<details>
-<summary>Build from source instead</summary>
-
-```sh
-brew install xcodegen
-git clone https://github.com/s0xDk/blackhole_screensaver_macos.git
-cd blackhole_screensaver_macos
-xcodegen generate
-xcodebuild -project BlackHoleSaver.xcodeproj -scheme BlackHoleSaver -configuration Release build
-cp -R ~/Library/Developer/Xcode/DerivedData/BlackHoleSaver-*/Build/Products/Release/BlackHoleSaver.saver ~/Library/Screen\ Savers/
-killall legacyScreenSaver 2>/dev/null; true
+```bash
+xattr -dr com.apple.quarantine BlackHoleSaver.saver
 ```
 
-</details>
+## 屏幕录制权限
 
-## Screen Recording permission
+截取桌面需要**屏幕录制**权限。第三方屏保运行在 Apple 的系统进程中，权限需要授予宿主进程而非屏保 bundle 本身。**不同 macOS 版本的宿主进程不同：**
 
-Capturing the desktop requires the **Screen Recording** permission, and third-party savers run inside Apple's host process `legacyScreenSaver` — so the permission must be granted to *that*, not to the saver bundle. The "+" picker in Privacy & Security won't help: it only accepts regular `.app` bundles, and `legacyScreenSaver.appex` is an app extension inside a system framework. Drag-and-drop is the way:
+### macOS 27
 
-1. Open **System Settings → Privacy & Security → Screen & System Audio Recording**.
-2. In **Finder**, choose **Go → Go to Folder…** (<kbd>⇧⌘G</kbd>) and paste:
+宿主进程为 `WallpaperAgent.app`（普通的 `.app`，可以直接通过 "+" 添加）：
 
-       /System/Library/Frameworks/ScreenSaver.framework/PlugIns/
+1. 打开 **系统设置 → 隐私与安全性 → 屏幕与系统音频录制**
+2. 点击 **+** → 前往 `/System/Library/CoreServices/`
+3. 选择 **WallpaperAgent.app** → 打开 → 打开开关
+4. 终端执行 `killall WallpaperAgent`（或注销重新登录）
 
-3. Drag **`legacyScreenSaver.appex`** from that Finder window and drop it onto the app list in the Screen Recording settings, then make sure its toggle is on.
-4. Run `killall legacyScreenSaver` in Terminal (or log out and back in) so the host relaunches with the permission.
+### macOS 14 / 15
 
-Run the screensaver — your desktop falls into the hole.
+宿主进程为 `legacyScreenSaver.appex`（`.appex` 扩展，"+ " 按钮无法选取，需要拖拽）：
 
-## Settings & presets
+1. 打开 **系统设置 → 隐私与安全性 → 屏幕与系统音频录制**
+2. 在 Finder 中 **前往 → 前往文件夹…**（<kbd>⇧⌘G</kbd>），粘贴：
 
-System Settings → Screen Saver → BlackHoleSaver → **Options…**:
+   ```
+   /System/Library/Frameworks/ScreenSaver.framework/PlugIns/
+   ```
 
-- **Preset** — Inferno (default), Gargantua, M87* Donut, Face-on Ember, Quasar, Blazar, Pure Lens (no disk, pure geometry + starfield), Zen.
-- **Hole size** — apparent shadow radius; the visible footprint spans ~1.5% of the screen at the minimum to ~12% at the max.
-- **Drift speed** — how fast the hole wanders (0 = static centered).
-- **Warp reach** — how far out the desktop visibly bends, in hole radii; the top of the range warps essentially the whole screen.
-- **Quality** — render scale. *Auto* (default) caps the render at 1800 rows, which is indistinguishable in motion and keeps 5K/6K displays fast; Full / 75% / 50% are manual overrides.
+3. 将 **`legacyScreenSaver.appex`** 从 Finder 窗口拖入权限列表，打开开关
+4. 终端执行 `killall legacyScreenSaver`（或注销重新登录）
 
-## Break timer (menu bar helper)
+> 💡 也可以运行仓库中的 `fix-permissions.sh` 获取交互式帮助。
 
-`BlackHoleTimer.app` is an optional menu bar companion: set a timer, and when it runs out the screensaver is forced on — a break reminder where the break actually happens, because your work falls into the hole.
+## 设置与预设
 
-- Presets from 5 to 60 minutes, or **Custom…** for any duration; while running, the menu bar icon becomes a live countdown.
-- **Repeat** re-arms the timer after each break.
-- **Launch at Login** keeps it around.
-- **Show Black Hole Now** starts the screensaver immediately, no timer needed.
-- If the Mac slept past the deadline, it skips firing on wake instead of ambushing you the moment the lid opens.
+系统设置 → 屏幕保护程序 → BlackHoleSaver → **选项…**：
 
-Install: download `BlackHoleTimer.app.zip` from [Releases](https://github.com/s0xDk/blackhole_screensaver_macos/releases), unzip, drop it in `/Applications`, open. It works by launching Apple's `ScreenSaverEngine`, so it starts whatever saver is selected in System Settings — with its usual permissions intact.
+| 选项 | 说明 |
+|---|---|
+| **预设** | 炼狱（默认）、卡冈图雅、M87\* 甜甜圈、正面余烬、类星体、耀变体、纯透镜（无盘，纯几何 + 星空）、禅意 |
+| **黑洞大小** | 阴影外观半径，最小占屏幕约 1.5%，最大约 12% |
+| **漂移速度** | 黑洞漂移快慢（0 = 静止居中） |
+| **扭曲范围** | 桌面可见弯曲范围（以黑洞半径为单位），最大值几乎覆盖全屏 |
+| **画质** | 渲染缩放。自动（推荐）限制 1800 行，动态画面无感知差异且 5K/6K 屏保持流畅；可选手动覆盖 |
 
-Building from source: same steps as the saver, with `-scheme BlackHoleTimer`; the product is `BlackHoleTimer.app`.
+## 休息计时器（菜单栏工具）
 
-## Credits
+`BlackHoleTimer.app` 是可选菜单栏伴侣：设定倒计时，时间到了自动启动屏保——真正让你停下来休息，因为工作直接掉进黑洞里了。
 
-- [Eric Bruneton's black hole shader](https://ebruneton.github.io/black_hole_shader/) — the rendering approach.
-- [blackhole_ghostty](https://github.com/s0xDk/blackhole_ghostty) — the single-pass numeric adaptation and disk model this shader is ported from.
+- 预设 5 到 60 分钟，或**自定义**任意时长
+- 运行时菜单栏图标显示实时倒计时
+- **重复**：休息后自动重新开始计时
+- **登录时启动**：开机自启
+- **立即显示黑洞**：跳过计时直接启动屏保
+- 如果 Mac 在截止时间后从睡眠唤醒，不会立即触发
+
+安装：从 [Releases](https://github.com/Qsker/blackhole_screensaver_macos/releases) 下载解压，拖入 `/Applications` 即可。
+
+## 从源码构建
+
+```bash
+# 前置条件：Xcode 16+、Homebrew
+brew install xcodegen
+git clone https://github.com/Qsker/blackhole_screensaver_macos.git
+cd blackhole_screensaver_macos
+./build.sh
+```
+
+构建脚本会自动安装到 `~/Library/Screen Savers/`。也可手动构建：
+
+```bash
+xcodegen generate
+xcodebuild -project BlackHoleSaver.xcodeproj -scheme BlackHoleSaver -configuration Release build
+cp -R build/Build/Products/Release/BlackHoleSaver.saver ~/Library/Screen\ Savers/
+codesign --force --sign - ~/Library/Screen\ Savers/BlackHoleSaver.saver
+killall WallpaperAgent
+```
+
+> ⚠️ 构建后务必重新签名（`codesign --force --sign -`），否则 ad-hoc 签名的时间戳不匹配会导致 macOS 内核拦截代码页，屏保无法正常工作。
+
+## 致谢
+
+- [Eric Bruneton 的黑洞 shader](https://ebruneton.github.io/black_hole_shader/) —— 渲染方法
+- [blackhole_ghostty](https://github.com/s0xDk/blackhole_ghostty) —— 单 pass 数值积分方案与吸积盘模型
