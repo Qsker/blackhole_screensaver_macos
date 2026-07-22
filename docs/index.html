@@ -6,12 +6,50 @@
 <title>BlackHoleSaver — macOS 黑洞屏保</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; }
+  body { background: #000; overflow: hidden; user-select: none; -webkit-user-select: none; }
   #bg-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+  #hud {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2;
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+  }
+  #hud button {
+    padding: 6px 14px;
+    background: rgba(20,20,31,.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.1); border-radius: 20px;
+    color: #999; font-size: .76rem; cursor: pointer; transition: .2s;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+  }
+  #hud button:hover { color: #eee; border-color: rgba(255,255,255,.3); }
+  #hud button.active { color: #e8874b; border-color: #e8874b; background: rgba(232,135,75,.15); }
+  #preset-name {
+    position: fixed; top: 24px; right: 28px; z-index: 2;
+    color: rgba(255,255,255,.2); font-size: .78rem;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+    pointer-events: none;
+  }
+  #hint {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 2;
+    color: rgba(255,255,255,.15); font-size: .78rem; pointer-events: none;
+    font-family: -apple-system, "PingFang SC", sans-serif;
+    transition: opacity .5s;
+  }
 </style>
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
+<div id="preset-name"></div>
+<div id="hint">🖱 拖拽移动 · 滚轮缩放 · 按数字键切换样式</div>
+
+<div id="hud">
+  <button data-idx="0">炼狱</button>
+  <button data-idx="1">卡冈图雅</button>
+  <button data-idx="2">M87* 甜甜圈</button>
+  <button data-idx="3">正面余烬</button>
+  <button data-idx="4">类星体</button>
+  <button data-idx="5">耀变体</button>
+  <button data-idx="6">纯透镜</button>
+  <button data-idx="7">禅意</button>
+</div>
 
 <script id="vert-shader" type="x-shader/x-vertex">
 attribute vec2 a_pos;
@@ -32,6 +70,11 @@ uniform float u_time;
 uniform vec2 u_center;
 uniform float u_holeSize;
 uniform sampler2D u_bg;
+
+// Preset parameters
+uniform float u_diskTemp, u_diskIncl, u_diskRoll, u_diskInner, u_diskOuter;
+uniform float u_diskOpacity, u_dopplerMix, u_diskBeam, u_diskGain;
+uniform float u_diskContrast, u_diskWind, u_diskSpeed, u_exposure, u_starGain;
 
 #define N_STEPS 48
 #define B_CRIT 2.5980762
@@ -87,11 +130,12 @@ void main() {
   float t = u_time;
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
 
-  float rin = 1.8, rout = 8.0;
-  float diskIncl = 1.50, diskRoll = 0.35;
-  float diskOpacity = 0.90, dopplerMix = 0.60, diskBeam = 2.5, diskGain = 2.2;
-  float diskContrast = 1.6, diskWind = 7.0, diskSpeed = 5.0;
-  float diskTemp = 5500.0, exposure = 1.40;
+  float rin = max(u_diskInner, 1.6);
+  float rout = max(u_diskOuter, rin + 0.5);
+  float diskIncl = u_diskIncl, diskRoll = u_diskRoll;
+  float diskOpacity = u_diskOpacity, dopplerMix = u_dopplerMix, diskBeam = u_diskBeam, diskGain = u_diskGain;
+  float diskContrast = u_diskContrast, diskWind = u_diskWind, diskSpeed = u_diskSpeed;
+  float diskTemp = u_diskTemp, exposure = u_exposure, starGain = u_starGain;
   float warpReach = 12.0;
   float rh = max(u_holeSize, 1e-3);
 
@@ -121,8 +165,10 @@ void main() {
       vec2 suv = u_center + (p - dir * defl * k) / vec2(aspect, 1.0);
       term[i] = texture2D(u_bg, suv)[i];
     }
-    vec3 d = normalize(vec3(-(pr / b) * (2.0 / b), -1.0));
-    term += stars(d, t) * 0.6 * window;
+    if (starGain > 0.001) {
+      vec3 d = normalize(vec3(-(pr / b) * (2.0 / b), -1.0));
+      term += stars(d, t) * starGain * window;
+    }
     gl_FragColor = vec4(term, 1.0);
     return;
   }
@@ -130,10 +176,12 @@ void main() {
   vec3 x = vec3(pr, Z0);
   vec3 v = vec3(0.0, 0.0, -1.0);
   float h2 = dot(pr, pr);
+  bool hasDisk = (diskGain > 0.001) || (diskOpacity > 0.001);
 
   float ci = cos(diskIncl), si = sin(diskIncl);
   vec3 n = vec3(0.0, si, ci);
   vec3 e2 = vec3(0.0, ci, -si);
+  float sdir = diskSpeed < 0.0 ? -1.0 : 1.0;
   float spd = abs(diskSpeed);
 
   vec3 emitc = vec3(0.0);
@@ -158,7 +206,7 @@ void main() {
     v += a * (0.5 * dt);
 
     float s = dot(x, n);
-    if (s * sPrev < 0.0 && trans > 0.02) {
+    if (hasDisk && s * sPrev < 0.0 && trans > 0.02) {
       float tc = sPrev / (sPrev - s);
       vec3 xc = mix(xPrev, x, tc);
       float rc = length(xc);
@@ -169,12 +217,12 @@ void main() {
         float turns = phi / (2.0 * PI);
         float kep = pow(rin / rc, 1.5);
         float gloc = sqrt(max(1.0 - 1.5 / rc, 0.02));
-        float swirl = rc * diskWind * 0.12 - t * kep * spd * gloc;
+        float swirl = rc * diskWind * 0.12 - t * kep * spd * gloc * sdir;
         float streaks = vnoiseWrapY(vec2(rc * 2.8, turns * 19.0 + swirl * 3.0), 19.0) * 0.65 +
                         vnoiseWrapY(vec2(rc * 1.0, turns * 9.0 + swirl * 1.5 + 7.0), 9.0) * 0.35;
         streaks = 0.35 + diskContrast * streaks * streaks;
 
-        vec3 gasdir = normalize(cross(n, xc));
+        vec3 gasdir = normalize(cross(n, xc)) * sdir;
         float beta = clamp(inversesqrt(max(2.0 * (rc - 1.0), 0.2)), 0.0, 0.99);
         float g = gloc / max(1.0 + beta * dot(gasdir, normalize(v)), 0.05);
         g = mix(1.0, g, dopplerMix);
@@ -193,10 +241,10 @@ void main() {
   }
   if (!captured && dot(x, x) < 4.0) captured = true;
 
-  vec3 bg = vec3(0.0);
+  vec3 bg = vec3(0.004, 0.005, 0.009);
   if (!captured) {
     vec3 d = normalize(v);
-    bg += stars(d, t) * 0.6 * window;
+    if (starGain > 0.001) bg += stars(d, t) * starGain * window;
     if (d.z < -0.05) {
       float tpl = (-14.0 - x.z) / d.z;
       vec3 hp = x + d * tpl;
@@ -214,6 +262,19 @@ void main() {
 </script>
 
 <script>
+// ── Presets (mirrors the Swift DiskLook values) ──
+const PRESETS = [
+  { name:'炼狱',      temp:5500, incl:1.50, roll:0.35, inner:1.8, outer:8,  opacity:0.90, doppler:0.60, beam:2.5, gain:2.2, contrast:1.6, wind:7, speed:5,  exposure:1.40, star:0    },
+  { name:'卡冈图雅',  temp:4500, incl:1.52, roll:0.10, inner:2.2, outer:7,  opacity:0.85, doppler:0.35, beam:2.0, gain:1.4, contrast:0.5, wind:7, speed:5,  exposure:1.20, star:0    },
+  { name:'M87* 甜甜圈',temp:3800, incl:0.55, roll:-0.30,inner:2.2, outer:6,  opacity:0.45, doppler:0.90, beam:3.5, gain:1.6, contrast:0.4, wind:3, speed:2.5,exposure:1.10, star:0    },
+  { name:'正面余烬',  temp:6500, incl:0.30, roll:0.0,  inner:3.0, outer:10, opacity:0.50, doppler:0.80, beam:2.5, gain:1.0, contrast:1.1, wind:7, speed:5,  exposure:1.00, star:0    },
+  { name:'类星体',    temp:15000,incl:1.30, roll:0.35, inner:3.0, outer:14, opacity:0.35, doppler:1.00, beam:4.0, gain:1.2, contrast:1.3, wind:8, speed:5,  exposure:0.80, star:0    },
+  { name:'耀变体',    temp:18000,incl:1.05, roll:0.55, inner:3.0, outer:16, opacity:0.30, doppler:1.00, beam:5.0, gain:1.0, contrast:1.5, wind:9, speed:6,  exposure:0.75, star:0    },
+  { name:'纯透镜',    temp:5500, incl:1.50, roll:0.35, inner:1.8, outer:8,  opacity:0.0,  doppler:1.00, beam:2.5, gain:0.0, contrast:1.6, wind:7, speed:5,  exposure:1.00, star:0.6  },
+  { name:'禅意',      temp:7000, incl:1.45, roll:0.15, inner:3.5, outer:7,  opacity:0.40, doppler:0.50, beam:2.0, gain:0.5, contrast:0.3, wind:3, speed:1.5,exposure:0.70, star:0    },
+];
+let presetIdx = 0;
+
 function loadBgTexture(gl, url) {
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -222,7 +283,7 @@ function loadBgTexture(gl, url) {
 
   const img = new Image();
   img.crossOrigin = 'anonymous';
-  img.onload = function() {
+  img.onload = () => {
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
@@ -239,14 +300,13 @@ function loadBgTexture(gl, url) {
   return tex;
 }
 
-function compileShader(gl, type, source) {
+function compileShader(gl, type, src) {
   const s = gl.createShader(type);
-  gl.shaderSource(s, source);
+  gl.shaderSource(s, src);
   gl.compileShader(s);
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-    console.error('Shader error:', gl.getShaderInfoLog(s));
-    gl.deleteShader(s);
-    return null;
+    console.error('Shader:', gl.getShaderInfoLog(s));
+    gl.deleteShader(s); return null;
   }
   return s;
 }
@@ -256,14 +316,37 @@ function createProgram(gl, vsSrc, fsSrc) {
   const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
   if (!vs || !fs) return null;
   const p = gl.createProgram();
-  gl.attachShader(p, vs);
-  gl.attachShader(p, fs);
+  gl.attachShader(p, vs); gl.attachShader(p, fs);
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-    console.error('Link error:', gl.getProgramInfoLog(p));
-    return null;
+    console.error('Link:', gl.getProgramInfoLog(p)); return null;
   }
   return p;
+}
+
+// Lissajous drift — same as the Swift version
+function lissa(t) {
+  return [
+    0.75 * Math.sin(t * 0.37) + 0.25 * Math.sin(t * 0.83 + 1.0),
+    0.70 * Math.sin(t * 0.54 + 2.1) + 0.30 * Math.sin(t * 1.07)
+  ];
+}
+
+function applyPreset(p, gl, locs) {
+  gl.uniform1f(locs.temp, p.temp);
+  gl.uniform1f(locs.incl, p.incl);
+  gl.uniform1f(locs.roll, p.roll);
+  gl.uniform1f(locs.inner, p.inner);
+  gl.uniform1f(locs.outer, p.outer);
+  gl.uniform1f(locs.opacity, p.opacity);
+  gl.uniform1f(locs.doppler, p.doppler);
+  gl.uniform1f(locs.beam, p.beam);
+  gl.uniform1f(locs.gain, p.gain);
+  gl.uniform1f(locs.contrast, p.contrast);
+  gl.uniform1f(locs.wind, p.wind);
+  gl.uniform1f(locs.speed, p.speed);
+  gl.uniform1f(locs.exposure, p.exposure);
+  gl.uniform1f(locs.star, p.star);
 }
 
 function main() {
@@ -284,51 +367,89 @@ function main() {
   gl.enableVertexAttribArray(aPos);
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
-  const uRes = gl.getUniformLocation(prog, 'u_resolution');
-  const uTime = gl.getUniformLocation(prog, 'u_time');
-  const uCenter = gl.getUniformLocation(prog, 'u_center');
-  const uHoleSize = gl.getUniformLocation(prog, 'u_holeSize');
-  const uBg = gl.getUniformLocation(prog, 'u_bg');
+  const locs = {
+    res:    gl.getUniformLocation(prog, 'u_resolution'),
+    time:   gl.getUniformLocation(prog, 'u_time'),
+    center: gl.getUniformLocation(prog, 'u_center'),
+    hole:   gl.getUniformLocation(prog, 'u_holeSize'),
+    bg:     gl.getUniformLocation(prog, 'u_bg'),
+    temp:   gl.getUniformLocation(prog, 'u_diskTemp'),
+    incl:   gl.getUniformLocation(prog, 'u_diskIncl'),
+    roll:   gl.getUniformLocation(prog, 'u_diskRoll'),
+    inner:  gl.getUniformLocation(prog, 'u_diskInner'),
+    outer:  gl.getUniformLocation(prog, 'u_diskOuter'),
+    opacity:gl.getUniformLocation(prog, 'u_diskOpacity'),
+    doppler:gl.getUniformLocation(prog, 'u_dopplerMix'),
+    beam:   gl.getUniformLocation(prog, 'u_diskBeam'),
+    gain:   gl.getUniformLocation(prog, 'u_diskGain'),
+    contrast:gl.getUniformLocation(prog, 'u_diskContrast'),
+    wind:   gl.getUniformLocation(prog, 'u_diskWind'),
+    speed:  gl.getUniformLocation(prog, 'u_diskSpeed'),
+    exposure:gl.getUniformLocation(prog, 'u_exposure'),
+    star:   gl.getUniformLocation(prog, 'u_starGain'),
+  };
 
+  gl.uniform1i(locs.bg, 0);
   const bgURL = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1024&q=80';
   const bgTex = loadBgTexture(gl, bgURL);
-  gl.uniform1i(uBg, 0);
 
-  let centerX = 0.5, centerY = 0.5, holeSize = 0.06;
-  let isDragging = false;
+  applyPreset(PRESETS[0], gl, locs);
+  document.getElementById('preset-name').textContent = PRESETS[0].name;
 
-  canvas.addEventListener('mousedown', () => { isDragging = true; });
-  window.addEventListener('mouseup', () => { isDragging = false; });
+  // ── UI ──
+  let holeSize = 0.06, dragX = 0.5, dragY = 0.5, dragging = false;
+  const driftSpeed = 1.0;
+
+  function setPreset(idx) {
+    presetIdx = idx;
+    applyPreset(PRESETS[idx], gl, locs);
+    document.getElementById('preset-name').textContent = PRESETS[idx].name;
+    document.querySelectorAll('#hud button').forEach((b,i) => b.classList.toggle('active', i===idx));
+  }
+
+  document.querySelectorAll('#hud button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setPreset(parseInt(btn.dataset.idx));
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const n = parseInt(e.key);
+    if (n >= 1 && n <= PRESETS.length) setPreset(n - 1);
+    if (e.key === '0') setPreset(7); // 0 = 8th preset
+  });
+
+  canvas.addEventListener('mousedown', (e) => { dragging = true; dragX = e.clientX / innerWidth; dragY = 1 - e.clientY / innerHeight; });
+  window.addEventListener('mouseup', () => { dragging = false; });
   canvas.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-      centerX = e.clientX / window.innerWidth;
-      centerY = 1.0 - e.clientY / window.innerHeight;
-    }
+    if (dragging) { dragX = e.clientX / innerWidth; dragY = 1 - e.clientY / innerHeight; }
   });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     holeSize = Math.max(0.02, Math.min(0.15, holeSize - e.deltaY * 0.0002));
   }, { passive: false });
-
   canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    isDragging = true;
-    centerX = e.touches[0].clientX / window.innerWidth;
-    centerY = 1.0 - e.touches[0].clientY / window.innerHeight;
+    e.preventDefault(); dragging = true;
+    dragX = e.touches[0].clientX / innerWidth; dragY = 1 - e.touches[0].clientY / innerHeight;
   });
   canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
-    if (isDragging) {
-      centerX = e.touches[0].clientX / window.innerWidth;
-      centerY = 1.0 - e.touches[0].clientY / window.innerHeight;
-    }
+    if (dragging) { dragX = e.touches[0].clientX / innerWidth; dragY = 1 - e.touches[0].clientY / innerHeight; }
   });
-  canvas.addEventListener('touchend', () => { isDragging = false; });
+  canvas.addEventListener('touchend', () => { dragging = false; });
+
+  // Hide initial hint after first interaction
+  const hint = document.getElementById('hint');
+  let hintHidden = false;
+  function hideHint() { if (!hintHidden) { hint.style.opacity = '0'; hintHidden = true; } }
+  canvas.addEventListener('mousedown', hideHint);
+  canvas.addEventListener('wheel', hideHint);
+  document.addEventListener('keydown', hideHint);
 
   function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
     gl.viewport(0, 0, canvas.width, canvas.height);
   }
   window.addEventListener('resize', resize);
@@ -336,12 +457,21 @@ function main() {
 
   function render(time) {
     resize();
+    const t = time * 0.001;
+
+    // Lissajous drift + user drag offset
+    const [wx, wy] = lissa(t * 0.3 * driftSpeed);
+    let cx = 0.5 + wx * 0.16 + (dragX - 0.5);
+    let cy = 0.5 + wy * 0.12 + (dragY - 0.5);
+    cx = Math.max(-0.2, Math.min(1.2, cx));
+    cy = Math.max(-0.2, Math.min(1.2, cy));
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, bgTex);
-    gl.uniform2f(uRes, canvas.width, canvas.height);
-    gl.uniform1f(uTime, time * 0.001);
-    gl.uniform2f(uCenter, centerX, centerY);
-    gl.uniform1f(uHoleSize, holeSize);
+    gl.uniform2f(locs.res, canvas.width, canvas.height);
+    gl.uniform1f(locs.time, t);
+    gl.uniform2f(locs.center, cx, cy);
+    gl.uniform1f(locs.hole, holeSize);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
