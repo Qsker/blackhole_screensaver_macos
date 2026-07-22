@@ -397,7 +397,8 @@ function main() {
   document.getElementById('preset-name').textContent = PRESETS[0].name;
 
   // ── UI ──
-  let holeSize = 0.06, dragX = 0.5, dragY = 0.5, dragging = false;
+  let holeSize = 0.06, holeX = 0.5, holeY = 0.5;
+  let dragging = false, grabOffX = 0, grabOffY = 0;
   const driftSpeed = 1.0;
 
   function setPreset(idx) {
@@ -416,13 +417,25 @@ function main() {
   document.addEventListener('keydown', (e) => {
     const n = parseInt(e.key);
     if (n >= 1 && n <= PRESETS.length) setPreset(n - 1);
-    if (e.key === '0') setPreset(7); // 0 = 8th preset
+    if (e.key === '0') setPreset(7);
   });
 
-  canvas.addEventListener('mousedown', (e) => { dragging = true; dragX = e.clientX / innerWidth; dragY = 1 - e.clientY / innerHeight; });
+  // Grab-style drag: click on the hole to pick it up, drag to move
+  function pointerUv(e) { return [e.clientX / innerWidth, 1 - e.clientY / innerHeight]; }
+
+  canvas.addEventListener('mousedown', (e) => {
+    dragging = true;
+    const [mx, my] = pointerUv(e);
+    grabOffX = holeX - mx;
+    grabOffY = holeY - my;
+  });
   window.addEventListener('mouseup', () => { dragging = false; });
   canvas.addEventListener('mousemove', (e) => {
-    if (dragging) { dragX = e.clientX / innerWidth; dragY = 1 - e.clientY / innerHeight; }
+    if (dragging) {
+      const [mx, my] = pointerUv(e);
+      holeX = mx + grabOffX;
+      holeY = my + grabOffY;
+    }
   });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -430,11 +443,17 @@ function main() {
   }, { passive: false });
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault(); dragging = true;
-    dragX = e.touches[0].clientX / innerWidth; dragY = 1 - e.touches[0].clientY / innerHeight;
+    const [mx, my] = pointerUv(e.touches[0]);
+    grabOffX = holeX - mx;
+    grabOffY = holeY - my;
   });
   canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
-    if (dragging) { dragX = e.touches[0].clientX / innerWidth; dragY = 1 - e.touches[0].clientY / innerHeight; }
+    if (dragging) {
+      const [mx, my] = pointerUv(e.touches[0]);
+      holeX = mx + grabOffX;
+      holeY = my + grabOffY;
+    }
   });
   canvas.addEventListener('touchend', () => { dragging = false; });
 
@@ -459,10 +478,10 @@ function main() {
     resize();
     const t = time * 0.001;
 
-    // Lissajous drift + user drag offset
+    // Lissajous drift + user grab offset
     const [wx, wy] = lissa(t * 0.3 * driftSpeed);
-    let cx = 0.5 + wx * 0.16 + (dragX - 0.5);
-    let cy = 0.5 + wy * 0.12 + (dragY - 0.5);
+    let cx = holeX + wx * 0.16;
+    let cy = holeY + wy * 0.12;
     cx = Math.max(-0.2, Math.min(1.2, cx));
     cy = Math.max(-0.2, Math.min(1.2, cy));
 
