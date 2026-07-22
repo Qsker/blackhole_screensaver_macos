@@ -5,26 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BlackHoleSaver — macOS 黑洞屏保</title>
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --card: #14141f;
-    --text: #c8c8d4;
-    --accent: #e8874b;
-    --accent2: #c96030;
-  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: var(--bg);
-    color: var(--text);
+    background: #000;
     font-family: -apple-system, "SF Pro Display", "PingFang SC", "Noto Sans SC", sans-serif;
+    overflow-x: hidden;
+    color: #c8c8d4;
     line-height: 1.7;
   }
+  /* Fullscreen canvas behind everything */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 0;
+  }
+  /* Overlay */
+  .overlay {
+    position: relative; z-index: 1;
+    pointer-events: none;
+  }
+  .overlay > * { pointer-events: auto; }
 
   /* Hero */
   .hero {
     text-align: center;
-    padding: 80px 24px 48px;
-    background: radial-gradient(ellipse at 50% 30%, #1a1a2e 0%, var(--bg) 70%);
+    padding: 60px 24px 32px;
+    background: radial-gradient(ellipse at 50% 30%, rgba(26,26,46,.7) 0%, transparent 70%);
   }
   .hero h1 {
     font-size: clamp(2rem, 5vw, 3.5rem);
@@ -33,102 +40,82 @@
     background: linear-gradient(135deg, #e8874b 0%, #f5c542 50%, #e8874b 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-shadow: none;
   }
-  .hero .subtitle {
-    margin-top: 12px;
-    font-size: 1.15rem;
-    color: #8888a0;
-  }
-  .hero .fork-note {
-    margin-top: 8px;
-    font-size: 0.85rem;
-    color: #666;
-  }
+  .hero .subtitle { margin-top: 12px; font-size: 1.15rem; color: #8888a0; }
+  .hero .fork-note { margin-top: 8px; font-size: .85rem; color: #666; }
   .hero .fork-note a { color: #888; }
   .hero .btn {
     display: inline-block;
-    margin-top: 32px;
+    margin-top: 28px;
     padding: 14px 40px;
-    background: var(--accent);
+    background: #e8874b;
     color: #fff;
     font-size: 1.05rem;
     font-weight: 600;
     border-radius: 999px;
     text-decoration: none;
-    transition: background .2s;
+    transition: background .2s, transform .2s;
   }
-  .hero .btn:hover { background: var(--accent2); }
+  .hero .btn:hover { background: #c96030; transform: scale(1.04); }
   .hero .btn-sub {
     display: inline-block;
-    margin-top: 16px;
-    margin-left: 12px;
+    margin-top: 14px;
+    margin-left: 10px;
     padding: 10px 28px;
     border: 1px solid #444;
     color: #aaa;
-    font-size: 0.9rem;
+    font-size: .9rem;
     border-radius: 999px;
     text-decoration: none;
     transition: .2s;
   }
   .hero .btn-sub:hover { border-color: #888; color: #ddd; }
 
-  /* Preview */
-  .preview {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 24px 60px;
-  }
-  .preview img {
-    width: 100%;
-    border-radius: 16px;
-    box-shadow: 0 0 80px rgba(232,135,75,.15);
-  }
-
-  /* Section */
+  /* Sections */
   section {
+    position: relative; z-index: 1;
     max-width: 780px;
-    margin: 0 auto 60px;
+    margin: 0 auto 48px;
     padding: 0 24px;
+    pointer-events: auto;
   }
   section h2 {
     font-size: 1.5rem;
     margin-bottom: 16px;
     color: #eee;
+    text-align: center;
   }
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
   }
   .card {
-    background: var(--card);
+    background: rgba(20,20,31,.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: 12px;
-    padding: 24px;
+    padding: 22px;
+    border: 1px solid rgba(255,255,255,.06);
   }
-  .card h3 { font-size: 1rem; color: var(--accent); margin-bottom: 8px; }
-  .card p  { font-size: .92rem; color: #999; }
+  .card h3 { font-size: 1rem; color: #e8874b; margin-bottom: 8px; }
+  .card p  { font-size: .9rem; color: #999; }
 
-  /* Compat table */
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: .92rem;
+    font-size: .9rem;
+    background: rgba(20,20,31,.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px;
+    overflow: hidden;
   }
-  th, td {
-    padding: 10px 14px;
-    text-align: left;
-    border-bottom: 1px solid #222;
-  }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
   th { color: #888; font-weight: 500; }
-  td code {
-    background: #222;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: .85rem;
-    color: #ccc;
-  }
+  td code { background: #222; padding: 2px 8px; border-radius: 4px; font-size: .82rem; color: #ccc; }
 
-  /* Steps */
   .steps { list-style: none; counter-reset: step; }
   .steps li {
     counter-increment: step;
@@ -139,114 +126,485 @@
     content: counter(step);
     position: absolute; left: 0; top: 8px;
     width: 24px; height: 24px;
-    background: var(--accent);
+    background: #e8874b;
     color: #fff;
     font-size: .8rem; font-weight: 600;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
   }
   .permission-box {
-    background: var(--card);
+    background: rgba(20,20,31,.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: 12px;
-    padding: 20px 24px;
-    margin-top: 16px;
+    padding: 18px 22px;
+    margin-top: 14px;
+    border: 1px solid rgba(255,255,255,.06);
   }
-  .permission-box h4 { color: #ddd; margin-bottom: 8px; }
+  .permission-box h4 { color: #ddd; margin-bottom: 6px; }
+
+  .hint {
+    text-align: center;
+    color: rgba(255,255,255,.35);
+    font-size: .82rem;
+    margin-top: 10px;
+  }
 
   footer {
+    position: relative; z-index: 1;
     text-align: center;
     padding: 40px 24px;
     color: #555;
     font-size: .85rem;
-    border-top: 1px solid #1a1a24;
+    border-top: 1px solid rgba(255,255,255,.06);
   }
   footer a { color: #777; }
 </style>
 </head>
 <body>
 
-<div class="hero">
-  <h1>BlackHoleSaver</h1>
-  <p class="subtitle">你的桌面掉进了黑洞——macOS 黑洞引力透镜屏保</p>
-  <p class="fork-note">Fork 自 <a href="https://github.com/s0xDk/blackhole_screensaver_macos">s0xDk/blackhole_screensaver_macos</a></p>
-  <a class="btn" href="https://github.com/Qsker/blackhole_screensaver_macos/releases/latest">⬇ 下载 BlackHoleSaver</a>
-  <br>
-  <a class="btn-sub" href="https://github.com/Qsker/blackhole_screensaver_macos">GitHub 仓库</a>
+<!-- 实时黑洞画布 -->
+<canvas id="bg-canvas"></canvas>
+
+<div class="overlay">
+  <div class="hero">
+    <h1>BlackHoleSaver</h1>
+    <p class="subtitle">你的桌面掉进了黑洞——macOS 引力透镜屏保</p>
+    <p class="fork-note">Fork 自 <a href="https://github.com/s0xDk/blackhole_screensaver_macos">s0xDk/blackhole_screensaver_macos</a></p>
+    <a class="btn" href="https://github.com/Qsker/blackhole_screensaver_macos/releases/latest">⬇ 下载 BlackHoleSaver</a>
+    <br>
+    <a class="btn-sub" href="https://github.com/Qsker/blackhole_screensaver_macos">GitHub 仓库</a>
+  </div>
+
+  <p class="hint">🖱 移动鼠标拖拽黑洞 · 滚动滚轮缩放</p>
+
+  <section>
+    <h2>✨ 实时预览（WebGL）</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>🕳 黑洞阴影</h3>
+        <p>碰撞参数不足的光线坠入视界——窗口真的被吞噬了</p>
+      </div>
+      <div class="card">
+        <h3>🔍 引力透镜</h3>
+        <p>桌面在爱因斯坦环内弯曲、放大、镜像</p>
+      </div>
+      <div class="card">
+        <h3>💫 吸积盘</h3>
+        <p>Shakura–Sunyaev 温度 + 相对论多普勒效应</p>
+      </div>
+      <div class="card">
+        <h3>🌌 星空</h3>
+        <p>透镜星空背景，实时逐像素测地线积分</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>💻 兼容性</h2>
+    <table>
+      <tr><th>macOS 版本</th><th>状态</th><th>录屏权限宿主</th></tr>
+      <tr><td>macOS 27</td><td>✅ 已测试</td><td><code>WallpaperAgent.app</code></td></tr>
+      <tr><td>macOS 15 Sequoia</td><td>✅ 兼容</td><td><code>legacyScreenSaver.appex</code></td></tr>
+      <tr><td>macOS 14 Sonoma</td><td>✅ 最低要求</td><td><code>legacyScreenSaver.appex</code></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>📥 安装</h2>
+    <ol class="steps">
+      <li>从 <a href="https://github.com/Qsker/blackhole_screensaver_macos/releases/latest" style="color:#e8874b">Releases</a> 下载并解压</li>
+      <li>双击 <code>BlackHoleSaver.saver</code> 安装</li>
+      <li>系统设置 → 屏幕保护程序 → <strong>BlackHoleSaver</strong></li>
+      <li>授予屏幕录制权限</li>
+    </ol>
+    <div class="permission-box">
+      <h4>🔒 macOS 27</h4>
+      <p>隐私 → 屏幕录制 → + → <code>/System/Library/CoreServices/WallpaperAgent.app</code></p>
+      <h4 style="margin-top:12px">🔒 macOS 14 / 15</h4>
+      <p>拖入 <code>ScreenSaver.framework/PlugIns/legacyScreenSaver.appex</code></p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Fork 自 <a href="https://github.com/s0xDk/blackhole_screensaver_macos">s0xDk/blackhole_screensaver_macos</a> · 基于 Eric Bruneton 的黑洞渲染研究</p>
+  </footer>
 </div>
 
-<div class="preview">
-  <img src="preview.jpg" alt="BlackHoleSaver 效果预览">
-</div>
+<!-- WebGL 黑洞着色器 -->
+<script id="vert-shader" type="x-shader/x-vertex">
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main() {
+  v_uv = a_pos * 0.5 + 0.5;
+  v_uv.y = 1.0 - v_uv.y;
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}
+</script>
 
-<section>
-  <h2>✨ 效果</h2>
-  <div class="cards">
-    <div class="card">
-      <h3>🕳 黑洞阴影</h3>
-      <p>史瓦西半径内的光线坠入视界，窗口真的被吞噬了</p>
-    </div>
-    <div class="card">
-      <h3>🔍 引力透镜</h3>
-      <p>桌面在爱因斯坦环内弯曲、放大、镜像，实时数值积分</p>
-    </div>
-    <div class="card">
-      <h3>💫 吸积盘</h3>
-      <p>Shakura–Sunyaev 温度分布，相对论多普勒频移与束流增强</p>
-    </div>
-    <div class="card">
-      <h3>🌌 星空</h3>
-      <p>没有录屏权限时显示透镜星空，同样震撼</p>
-    </div>
-  </div>
-</section>
+<script id="frag-shader" type="x-shader/x-fragment">
+precision highp float;
 
-<section>
-  <h2>💻 兼容性</h2>
-  <table>
-    <tr><th>macOS 版本</th><th>状态</th><th>录屏权限宿主</th></tr>
-    <tr><td>macOS 27</td><td>✅ 已测试</td><td><code>WallpaperAgent.app</code></td></tr>
-    <tr><td>macOS 15 Sequoia</td><td>✅ 兼容</td><td><code>legacyScreenSaver.appex</code></td></tr>
-    <tr><td>macOS 14 Sonoma</td><td>✅ 最低要求</td><td><code>legacyScreenSaver.appex</code></td></tr>
-  </table>
-  <p style="margin-top:12px; font-size:.85rem; color:#777">需要 Apple Silicon（M 系列芯片）推荐，Intel Mac 也可运行但性能较低。</p>
-</section>
+varying vec2 v_uv;
+uniform vec2 u_resolution;
+uniform float u_time;
+uniform vec2 u_center;    // hole position 0..1
+uniform float u_holeSize;  // shadow radius in screen-height units
+uniform sampler2D u_bg;   // background "desktop" texture
 
-<section>
-  <h2>📥 安装</h2>
-  <ol class="steps">
-    <li>从 <a href="https://github.com/Qsker/blackhole_screensaver_macos/releases/latest" style="color:var(--accent)">Releases</a> 下载 <code>BlackHoleSaver.saver.zip</code> 并解压</li>
-    <li>双击 <code>BlackHoleSaver.saver</code> 安装</li>
-    <li>打开<strong>系统设置 → 屏幕保护程序</strong>，选择 <strong>BlackHoleSaver</strong></li>
-    <li>授予屏幕录制权限（见下方）</li>
-  </ol>
+#define N_STEPS 48
+#define B_CRIT 2.5980762
+#define PI 3.14159265
 
-  <div class="permission-box">
-    <h4>🔒 macOS 27 — 录屏权限</h4>
-    <p>系统设置 → 隐私与安全性 → 屏幕与系统音频录制 → 点 + → 前往 <code>/System/Library/CoreServices/</code> → 选 <code>WallpaperAgent.app</code> → 打开开关</p>
-    <h4 style="margin-top:14px">🔒 macOS 14 / 15 — 录屏权限</h4>
-    <p>系统设置 → 隐私与安全性 → 屏幕与系统音频录制 → 从 Finder 把 <code>/System/Library/Frameworks/ScreenSaver.framework/PlugIns/legacyScreenSaver.appex</code> 拖入列表 → 打开开关</p>
-    <p style="margin-top:10px; font-size:.85rem; color:#888">没有权限也能用，黑洞会吞星空而不是桌面。</p>
-  </div>
-</section>
+// Hash
+float hash21(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
 
-<section>
-  <h2>⚙️ 预设</h2>
-  <table>
-    <tr><th>预设名</th><th>特点</th></tr>
-    <tr><td>🔥 炼狱</td><td>默认，炽热吸积盘 + 强引力透镜</td></tr>
-    <tr><td>🪐 卡冈图雅</td><td>温和色调，类似《星际穿越》风格</td></tr>
-    <tr><td>🍩 M87* 甜甜圈</td><td>低倾角，类似 EHT 拍摄的 M87* 黑洞</td></tr>
-    <tr><td>✨ 类星体</td><td>高温蓝色吸积盘，强烈多普勒束流</td></tr>
-    <tr><td>🔵 耀变体</td><td>极端温度，最强相对论效应</td></tr>
-    <tr><td>🔬 纯透镜</td><td>无吸积盘，纯引力透镜 + 星空</td></tr>
-    <tr><td>🧘 禅意</td><td>低对比度柔和吸积盘，安静优雅</td></tr>
-  </table>
-</section>
+float glmod(float x, float y) { return x - y * floor(x / y); }
 
-<footer>
-  <p>Fork 自 <a href="https://github.com/s0xDk/blackhole_screensaver_macos">s0xDk/blackhole_screensaver_macos</a> · 基于 Eric Bruneton 的黑洞渲染研究</p>
-  <p style="margin-top:4px">macOS 27 适配 · Swift 6 兼容 · 中文界面</p>
-</footer>
+float vnoiseWrapY(vec2 p, float perY) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float y0 = glmod(i.y, perY), y1 = glmod(i.y + 1.0, perY);
+  return mix(mix(hash21(vec2(i.x, y0)), hash21(vec2(i.x + 1.0, y0)), f.x),
+             mix(hash21(vec2(i.x, y1)), hash21(vec2(i.x + 1.0, y1)), f.x), f.y);
+}
 
+vec2 rot2(vec2 v, float a) {
+  float c = cos(a), s = sin(a);
+  return vec2(c * v.x - s * v.y, s * v.x + c * v.y);
+}
+
+vec3 blackbody(float T) {
+  float t = clamp(T, 1500.0, 40000.0) / 100.0;
+  float r = t <= 66.0 ? 1.0 : clamp(1.292936 * pow(t - 60.0, -0.1332047), 0.0, 1.0);
+  float g = t <= 66.0 ? clamp(0.3900816 * log(t) - 0.6318414, 0.0, 1.0)
+                      : clamp(1.1298909 * pow(t - 60.0, -0.0755148), 0.0, 1.0);
+  float b = t >= 66.0 ? 1.0 : (t <= 19.0 ? 0.0
+                      : clamp(0.5432068 * log(t - 10.0) - 1.1962540, 0.0, 1.0));
+  return vec3(r, g, b);
+}
+
+vec3 stars(vec3 d, float time) {
+  vec2 sph = vec2(atan(d.x, -d.z), asin(clamp(d.y, -1.0, 1.0)));
+  vec2 g = sph * 40.0;
+  vec2 id = floor(g);
+  float h = hash21(id);
+  if (h < 0.92) return vec3(0.0);
+  vec2 f = fract(g) - 0.5;
+  vec2 off = (vec2(hash21(id + 17.3), hash21(id + 31.7)) - 0.5) * 0.7;
+  float spark = smoothstep(0.10, 0.0, length(f - off));
+  float tw = 0.7 + 0.3 * sin(time * (0.5 + 2.0 * hash21(id + 5.1)) + 40.0 * h);
+  vec3 tint = mix(vec3(1.0, 0.82, 0.60), vec3(0.75, 0.85, 1.0), hash21(id + 2.9));
+  return tint * spark * tw * ((h - 0.92) / 0.08);
+}
+
+void main() {
+  vec2 uv = v_uv;
+  float t = u_time;
+  float aspect = u_resolution.x / max(u_resolution.y, 1.0);
+
+  // Disk parameters (Inferno preset)
+  float rin = 1.8, rout = 8.0;
+  float diskIncl = 1.50, diskRoll = 0.35;
+  float diskOpacity = 0.90, dopplerMix = 0.60, diskBeam = 2.5, diskGain = 2.2;
+  float diskContrast = 1.6, diskWind = 7.0, diskSpeed = 5.0;
+  float diskTemp = 5500.0, exposure = 1.40;
+  float warpReach = 12.0;
+  float rh = max(u_holeSize, 1e-3);
+
+  vec2 p = (uv - u_center) * vec2(aspect, 1.0);
+  float plen = length(p);
+  float window = exp(-pow(plen / (warpReach * rh), 2.0));
+
+  float W = B_CRIT / rh;
+  vec2 pr = rot2(vec2(p.x, -p.y), diskRoll) * W;
+  float b = length(pr);
+  float bmax = rout + 3.0;
+  float Z0 = max(14.0, rout + 5.0);
+
+  // Outside warp window: show background normally
+  if (b >= bmax && window < 0.004) {
+    gl_FragColor = vec4(texture2D(u_bg, uv).rgb, 1.0);
+    return;
+  }
+
+  // Far field: analytic weak deflection
+  if (b >= bmax) {
+    float uu = Z0 * inversesqrt(Z0 * Z0 + b * b);
+    float defl = (2.0 / (W * W)) / max(plen, 1e-4)
+               * (1.29 * uu + 0.07) * max(14.0 - 2.14 * uu + 0.75, 0.0) * window;
+    vec2 dir = p / max(plen, 1e-5);
+    vec3 term = vec3(0.0);
+    for (int i = 0; i < 3; i++) {
+      float k = 1.0 + (float(i) - 1.0) * 0.035;
+      vec2 suv = u_center + (p - dir * defl * k) / vec2(aspect, 1.0);
+      term[i] = texture2D(u_bg, suv)[i];
+    }
+    vec3 d = normalize(vec3(-(pr / b) * (2.0 / b), -1.0));
+    term += stars(d, t) * 0.6 * window;
+    gl_FragColor = vec4(term, 1.0);
+    return;
+  }
+
+  // Near field: geodesic integration
+  vec3 x = vec3(pr, Z0);
+  vec3 v = vec3(0.0, 0.0, -1.0);
+  float h2 = dot(pr, pr);
+
+  float ci = cos(diskIncl), si = sin(diskIncl);
+  vec3 n = vec3(0.0, si, ci);
+  vec3 e2 = vec3(0.0, ci, -si);
+  float spd = abs(diskSpeed);
+
+  vec3 emitc = vec3(0.0);
+  float trans = 1.0;
+  bool captured = false;
+  float sPrev = dot(x, n);
+  vec3 xPrev = x;
+
+  for (int i = 0; i < N_STEPS; i++) {
+    float r2 = dot(x, x);
+    if (r2 < 1.0) { captured = true; break; }
+    if (x.z < -Z0 && v.z < 0.0) break;
+    if (r2 > 4.0 * Z0 * Z0) break;
+    float r = sqrt(r2);
+    float dt = clamp(0.16 * r, 0.03, 1.5);
+    vec3 a = -1.5 * h2 * x / (r2 * r2 * r);
+    v += a * (0.5 * dt);
+    x += v * dt;
+    r2 = dot(x, x);
+    r = sqrt(r2);
+    a = -1.5 * h2 * x / (r2 * r2 * r);
+    v += a * (0.5 * dt);
+
+    float s = dot(x, n);
+    if (s * sPrev < 0.0 && trans > 0.02) {
+      float tc = sPrev / (sPrev - s);
+      vec3 xc = mix(xPrev, x, tc);
+      float rc = length(xc);
+      if (rc > rin && rc < rout) {
+        float band = smoothstep(rin, rin * 1.25, rc)
+                   * (1.0 - smoothstep(rout * 0.70, rout, rc));
+        float phi = atan(dot(xc, e2), xc.x);
+        float turns = phi / (2.0 * PI);
+        float kep = pow(rin / rc, 1.5);
+        float gloc = sqrt(max(1.0 - 1.5 / rc, 0.02));
+        float swirl = rc * diskWind * 0.12 - t * kep * spd * gloc;
+        float streaks = vnoiseWrapY(vec2(rc * 2.8, turns * 19.0 + swirl * 3.0), 19.0) * 0.65 +
+                        vnoiseWrapY(vec2(rc * 1.0, turns * 9.0 + swirl * 1.5 + 7.0), 9.0) * 0.35;
+        streaks = 0.35 + diskContrast * streaks * streaks;
+
+        vec3 gasdir = normalize(cross(n, xc));
+        float beta = clamp(inversesqrt(max(2.0 * (rc - 1.0), 0.2)), 0.0, 0.99);
+        float g = gloc / max(1.0 + beta * dot(gasdir, normalize(v)), 0.05);
+        g = mix(1.0, g, dopplerMix);
+
+        float xpr = max(1.0 - sqrt(rin / rc), 0.0);
+        float tprof = pow(rin / rc, 0.75) * pow(xpr, 0.25) / 0.488;
+        vec3 cbb = blackbody(diskTemp * tprof * g);
+        float boost = pow(g, diskBeam);
+        float density = band * streaks;
+        emitc += trans * cbb * (diskGain * 2.2 * density * tprof * tprof * boost);
+        trans *= 1.0 - clamp(diskOpacity * density, 0.0, 1.0);
+      }
+    }
+    sPrev = s;
+    xPrev = x;
+  }
+  if (!captured && dot(x, x) < 4.0) captured = true;
+
+  vec3 bg = vec3(0.0);
+  if (!captured) {
+    vec3 d = normalize(v);
+    bg += stars(d, t) * 0.6 * window;
+    if (d.z < -0.05) {
+      float tpl = (-14.0 - x.z) / d.z;
+      vec3 hp = x + d * tpl;
+      vec2 q = rot2(hp.xy, -diskRoll) / W;
+      vec2 sp = vec2(q.x, -q.y);
+      float toward = smoothstep(0.05, 0.35, -d.z);
+      vec2 suv = u_center + (p + (sp - p) * window) / vec2(aspect, 1.0);
+      bg += texture2D(u_bg, suv).rgb * toward;
+    }
+  }
+
+  vec3 col = bg * trans + (vec3(1.0) - exp(-emitc * exposure));
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+// Generate procedural background "desktop" texture
+function createBgTexture(gl) {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // Blue gradient sky
+  const grad = ctx.createLinearGradient(0, 0, 0, size);
+  grad.addColorStop(0, '#1a3a5c');
+  grad.addColorStop(0.5, '#2d6ca8');
+  grad.addColorStop(1, '#0d1b2a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Grid "windows"
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  const grid = size / 8;
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      ctx.strokeRect(i * grid + 4, j * grid + 4, grid - 8, grid - 8);
+      ctx.fillStyle = `rgba(${80+i*20},${100+j*15},${150+i*10},0.15)`;
+      ctx.fillRect(i * grid + 5, j * grid + 5, grid - 10, grid - 10);
+    }
+  }
+
+  // Dock-like bar
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(0, size - 32, size, 32);
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = `rgba(255,255,255,0.1)`;
+    const cx = size/2 + (i - 2) * 36;
+    ctx.beginPath();
+    ctx.arc(cx, size - 16, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  return tex;
+}
+
+function compileShader(gl, type, source) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, source);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error('Shader error:', gl.getShaderInfoLog(s));
+    gl.deleteShader(s);
+    return null;
+  }
+  return s;
+}
+
+function createProgram(gl, vsSrc, fsSrc) {
+  const vs = compileShader(gl, gl.VERTEX_SHADER, vsSrc);
+  const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
+  if (!vs || !fs) return null;
+  const p = gl.createProgram();
+  gl.attachShader(p, vs);
+  gl.attachShader(p, fs);
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error('Link error:', gl.getProgramInfoLog(p));
+    return null;
+  }
+  return p;
+}
+
+function main() {
+  const canvas = document.getElementById('bg-canvas');
+  const gl = canvas.getContext('webgl', { antialias: false });
+  if (!gl) {
+    document.querySelector('.hint').textContent = '⚠️ 你的浏览器不支持 WebGL，请用 Chrome/Firefox/Safari';
+    return;
+  }
+
+  const vsSrc = document.getElementById('vert-shader').textContent;
+  const fsSrc = document.getElementById('frag-shader').textContent;
+  const prog = createProgram(gl, vsSrc, fsSrc);
+  if (!prog) {
+    document.querySelector('.hint').textContent = '⚠️ Shader 编译失败';
+    return;
+  }
+  gl.useProgram(prog);
+
+  // Fullscreen quad
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, 'a_pos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  // Uniforms
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uCenter = gl.getUniformLocation(prog, 'u_center');
+  const uHoleSize = gl.getUniformLocation(prog, 'u_holeSize');
+  const uBg = gl.getUniformLocation(prog, 'u_bg');
+
+  const bgTex = createBgTexture(gl);
+  gl.uniform1i(uBg, 0);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, bgTex);
+
+  // Mouse interaction
+  let centerX = 0.5, centerY = 0.5, holeSize = 0.06;
+  let isDragging = false;
+
+  canvas.addEventListener('mousedown', () => { isDragging = true; });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+  canvas.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      centerX = e.clientX / window.innerWidth;
+      centerY = 1.0 - e.clientY / window.innerHeight;
+    }
+  });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    holeSize = Math.max(0.02, Math.min(0.15, holeSize - e.deltaY * 0.0002));
+  }, { passive: false });
+
+  // Touch
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    centerX = e.touches[0].clientX / window.innerWidth;
+    centerY = 1.0 - e.touches[0].clientY / window.innerHeight;
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (isDragging) {
+      centerX = e.touches[0].clientX / window.innerWidth;
+      centerY = 1.0 - e.touches[0].clientY / window.innerHeight;
+    }
+  });
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function render(time) {
+    resize();
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform1f(uTime, time * 0.001);
+    gl.uniform2f(uCenter, centerX, centerY);
+    gl.uniform1f(uHoleSize, holeSize);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+}
+
+main();
+</script>
 </body>
 </html>
