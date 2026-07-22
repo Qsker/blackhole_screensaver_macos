@@ -1,5 +1,7 @@
 # BlackHoleSaver — macOS 黑洞屏保
 
+> 本项目 fork 自 [s0xDk/blackhole_screensaver_macos](https://github.com/s0xDk/blackhole_screensaver_macos)，在其基础上做了 macOS 27 适配、Swift 6 兼容修复和中文界面改造。
+
 屏保启动时截取你的桌面，然后把它吞进黑洞——窗口在史瓦西黑洞周围弯曲、放大、镜像，配上相对论吸积盘。
 
 ![BlackHoleSaver 预览](preview.jpg)
