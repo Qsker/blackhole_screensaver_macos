@@ -389,10 +389,50 @@ function main() {
     star:   gl.getUniformLocation(prog, 'u_starGain'),
   };
 
+  // Generate wallpaper background instantly (no network needed)
+  function createWallpaper() {
+    const c = document.createElement('canvas');
+    c.width = 1024; c.height = 768;
+    const ctx = c.getContext('2d');
+    const sky = ctx.createLinearGradient(0, 0, 0, c.height);
+    sky.addColorStop(0, '#0b0b2e');
+    sky.addColorStop(0.25, '#1a237e');
+    sky.addColorStop(0.5, '#4a148c');
+    sky.addColorStop(0.7, '#ff6f00');
+    sky.addColorStop(1, '#0b0b2e');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, c.width, c.height);
+    // Mountains
+    ctx.fillStyle = '#050510';
+    ctx.beginPath(); ctx.moveTo(0, c.height);
+    for (let x = 0; x <= c.width; x += 16) {
+      ctx.lineTo(x, c.height - 250 - Math.sin(x*0.007)*160 - Math.sin(x*0.023)*90 - Math.sin(x*0.05)*40);
+    }
+    ctx.lineTo(c.width, c.height); ctx.closePath(); ctx.fill();
+    // Near ridge
+    ctx.fillStyle = '#020208';
+    ctx.beginPath(); ctx.moveTo(0, c.height);
+    for (let x = 0; x <= c.width; x += 16) {
+      ctx.lineTo(x, c.height - 120 - Math.sin(x*0.015)*100 - Math.sin(x*0.04)*50);
+    }
+    ctx.lineTo(c.width, c.height); ctx.closePath(); ctx.fill();
+    // Stars
+    for (let i = 0; i < 300; i++) {
+      const sx = Math.random() * c.width, sy = Math.random() * c.height * 0.55;
+      const r = Math.random() * 1.6;
+      ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.7+0.3})`;
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2); ctx.fill();
+    }
+    return c;
+  }
+  const wallpaperCanvas = createWallpaper();
+  const bgTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, bgTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, wallpaperCanvas);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.uniform1i(locs.bg, 0);
-  // Desktop-style background — uses local image, loads instantly
-  const bgURL = 'https://picsum.photos/1024/768';
-  const bgTex = loadBgTexture(gl, bgURL);
 
   applyPreset(PRESETS[0], gl, locs);
   document.getElementById('preset-name').textContent = PRESETS[0].name;
