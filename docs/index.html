@@ -397,8 +397,9 @@ function main() {
   document.getElementById('preset-name').textContent = PRESETS[0].name;
 
   // ── UI ──
-  let holeSize = 0.06, holeX = 0.5, holeY = 0.5;
+  let holeSize = 0.06, baseX = 0.5, baseY = 0.5;
   let dragging = false, grabOffX = 0, grabOffY = 0;
+  let renderedCX = 0.5, renderedCY = 0.5;
   const driftSpeed = 1.0;
 
   function setPreset(idx) {
@@ -420,21 +421,21 @@ function main() {
     if (e.key === '0') setPreset(7);
   });
 
-  // Grab-style drag: click on the hole to pick it up, drag to move
-  function pointerUv(e) { return [e.clientX / innerWidth, 1 - e.clientY / innerHeight]; }
+  // Grab the rendered black hole — grab offset uses actual visual position
+  function pointerUv(e) { return [e.clientX / innerWidth, 1.0 - e.clientY / innerHeight]; }
 
   canvas.addEventListener('mousedown', (e) => {
     dragging = true;
     const [mx, my] = pointerUv(e);
-    grabOffX = holeX - mx;
-    grabOffY = holeY - my;
+    grabOffX = renderedCX - mx;
+    grabOffY = renderedCY - my;
   });
   window.addEventListener('mouseup', () => { dragging = false; });
   canvas.addEventListener('mousemove', (e) => {
     if (dragging) {
       const [mx, my] = pointerUv(e);
-      holeX = mx + grabOffX;
-      holeY = my + grabOffY;
+      baseX = mx + grabOffX;
+      baseY = my + grabOffY;
     }
   });
   canvas.addEventListener('wheel', (e) => {
@@ -444,15 +445,15 @@ function main() {
   canvas.addEventListener('touchstart', (e) => {
     e.preventDefault(); dragging = true;
     const [mx, my] = pointerUv(e.touches[0]);
-    grabOffX = holeX - mx;
-    grabOffY = holeY - my;
+    grabOffX = renderedCX - mx;
+    grabOffY = renderedCY - my;
   });
   canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (dragging) {
       const [mx, my] = pointerUv(e.touches[0]);
-      holeX = mx + grabOffX;
-      holeY = my + grabOffY;
+      baseX = mx + grabOffX;
+      baseY = my + grabOffY;
     }
   });
   canvas.addEventListener('touchend', () => { dragging = false; });
@@ -480,10 +481,10 @@ function main() {
 
     // Lissajous drift + user grab offset
     const [wx, wy] = lissa(t * 0.3 * driftSpeed);
-    let cx = holeX + wx * 0.16;
-    let cy = holeY + wy * 0.12;
-    cx = Math.max(-0.2, Math.min(1.2, cx));
-    cy = Math.max(-0.2, Math.min(1.2, cy));
+    renderedCX = baseX + wx * 0.16;
+    renderedCY = baseY + wy * 0.12;
+    let cx = Math.max(-0.2, Math.min(1.2, renderedCX));
+    let cy = Math.max(-0.2, Math.min(1.2, renderedCY));
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, bgTex);
